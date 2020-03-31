@@ -621,7 +621,7 @@ public class ProcessDefinitionRestServiceQueryTest extends AbstractRestServiceTe
 
   @Test
   public void testQueryByDeployTimeAfter() {
-    String deployTime = withTimezone("2020-03-27T00:00:00");
+    String deployTime = withTimezone("2020-03-27T01:23:45");
     Date date = DateTimeUtil.parseDate(deployTime);
     
     given().queryParam("deployedAfter", deployTime)
@@ -634,7 +634,7 @@ public class ProcessDefinitionRestServiceQueryTest extends AbstractRestServiceTe
 
   @Test
   public void testQueryByDeployTimeAt() {
-    String deployTime = withTimezone("2020-03-27T00:00:00");
+    String deployTime = withTimezone("2020-03-27T05:43:21");
     Date date = DateTimeUtil.parseDate(deployTime);
     
     given().queryParam("deployedAt", deployTime)
