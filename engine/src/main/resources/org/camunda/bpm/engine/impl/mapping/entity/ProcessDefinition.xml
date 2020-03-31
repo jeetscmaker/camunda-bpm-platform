@@ -300,7 +300,7 @@
         and RES.DEPLOYMENT_ID_ = #{deploymentId}
       </if>
       <if test="deployedAfter != null">
-        and DEP.DEPLOY_TIME_ > #{deployedAfter}
+        and DEP.DEPLOY_TIME_ &gt; #{deployedAfter}
       </if>
       <if test="deployedAt != null">
         and DEP.DEPLOY_TIME_ = #{deployedAt}
