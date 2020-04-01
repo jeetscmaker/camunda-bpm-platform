@@ -120,7 +120,8 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
   @Test
   public void testQueryByDeploymentTimeAfter() {
     // given
-    Date startTest = ClockUtil.now();
+    Date startTest = DateUtils.addSeconds(ClockUtil.now(), 5);
+    ClockUtil.setCurrentTime(startTest);
 
     ClockUtil.setCurrentTime(DateUtils.addSeconds(startTest, 5));
     String tempDeploymentOneId = repositoryService.createDeployment().addClasspathResource(getResourceOnePath()).addClasspathResource(getResourceTwoPath()).deploy().getId();
