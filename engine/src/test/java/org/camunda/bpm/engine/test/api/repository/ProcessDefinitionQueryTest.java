@@ -23,6 +23,7 @@ import static org.camunda.bpm.engine.test.api.runtime.TestOrderingUtil.verifySor
 
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.time.DateUtils;
 import org.assertj.core.util.DateUtil;
@@ -68,6 +69,7 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
 
   @After
   public void tearDown() throws Exception {
+    ClockUtil.reset();
     repositoryService.deleteDeployment(deploymentThreeId, true);
   }
 
@@ -124,15 +126,22 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
     ClockUtil.setCurrentTime(startTest);
 
     ClockUtil.setCurrentTime(DateUtils.addSeconds(startTest, 5));
-    String tempDeploymentOneId = repositoryService.createDeployment().addClasspathResource(getResourceOnePath()).addClasspathResource(getResourceTwoPath()).deploy().getId();
+    Deployment tempDeploymentOne = repositoryService.createDeployment()
+        .addClasspathResource(getResourceOnePath()).addClasspathResource(getResourceTwoPath()).deploy();
+    engineRule.manageDeployment(tempDeploymentOne);
+    
     Date timeAfterDeploymentOne = DateUtils.addSeconds(ClockUtil.getCurrentTime(), 1);
 
     ClockUtil.setCurrentTime(DateUtils.addSeconds(timeAfterDeploymentOne, 5));
-    String tempDeploymentTwoId = repositoryService.createDeployment().addClasspathResource(getResourceOnePath()).deploy().getId();
+    Deployment tempDeploymentTwo = repositoryService.createDeployment()
+        .addClasspathResource(getResourceOnePath()).deploy();
+    engineRule.manageDeployment(tempDeploymentTwo);
     Date timeAfterDeploymentTwo = DateUtils.addSeconds(ClockUtil.getCurrentTime(), 1);
 
     ClockUtil.setCurrentTime(DateUtils.addSeconds(timeAfterDeploymentTwo, 5));
-    String tempDeploymentThreeId = repositoryService.createDeployment().addClasspathResource(getResourceThreePath()).deploy().getId();
+    Deployment tempDeploymentThree = repositoryService.createDeployment()
+        .addClasspathResource(getResourceThreePath()).deploy();
+    engineRule.manageDeployment(tempDeploymentThree);
     Date timeAfterDeploymentThree = DateUtils.addSeconds(ClockUtil.getCurrentTime(), 1);
 
     // when
@@ -156,10 +165,6 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
     processDefinitions = repositoryService.createProcessDefinitionQuery().deployedAfter(timeAfterDeploymentThree).list();
     // then
     assertThat(processDefinitions).hasSize(0);
-
-    // cleanup
-    cleanupDeployments(tempDeploymentOneId, tempDeploymentTwoId, tempDeploymentThreeId);
-    ClockUtil.resetClock();
   }
 
   @Test
@@ -169,15 +174,21 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
     ClockUtil.setCurrentTime(startTest);
 
     Date timeAtDeploymentOne = ClockUtil.getCurrentTime();
-    String tempDeploymentOneId = repositoryService.createDeployment().addClasspathResource(getResourceOnePath()).addClasspathResource(getResourceTwoPath()).deploy().getId();
-
+    Deployment tempDeploymentOne = repositoryService.createDeployment()
+        .addClasspathResource(getResourceOnePath()).addClasspathResource(getResourceTwoPath()).deploy();
+    engineRule.manageDeployment(tempDeploymentOne);
+    
     Date timeAtDeploymentTwo = DateUtils.addSeconds(timeAtDeploymentOne, 5);
     ClockUtil.setCurrentTime(timeAtDeploymentTwo);
-    String tempDeploymentTwoId = repositoryService.createDeployment().addClasspathResource(getResourceOnePath()).deploy().getId();
+    Deployment tempDeploymentTwo = repositoryService.createDeployment()
+        .addClasspathResource(getResourceOnePath()).deploy();
+    engineRule.manageDeployment(tempDeploymentTwo);
 
     Date timeAtDeploymentThree = DateUtils.addSeconds(timeAtDeploymentTwo, 5);
     ClockUtil.setCurrentTime(timeAtDeploymentThree);
-    String tempDeploymentThreeId = repositoryService.createDeployment().addClasspathResource(getResourceThreePath()).deploy().getId();
+    Deployment tempDeploymentThree = repositoryService.createDeployment()
+        .addClasspathResource(getResourceThreePath()).deploy();
+    engineRule.manageDeployment(tempDeploymentThree);
 
     // then
     List<ProcessDefinition> processDefinitions = repositoryService.createProcessDefinitionQuery().deployedAt(timeAtDeploymentOne).list();
@@ -194,10 +205,6 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
 
     processDefinitions = repositoryService.createProcessDefinitionQuery().deployedAt(DateUtil.now()).list();
     assertThat(processDefinitions).hasSize(0);
-
-    // cleanup
-    cleanupDeployments(tempDeploymentOneId, tempDeploymentTwoId, tempDeploymentThreeId);
-    ClockUtil.resetClock();
   }
 
   @Test
@@ -791,13 +798,23 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
 
   @Test
   public void testQueryOrderByDeployTime() {
+    // given a deployment that is guaranteed to be deployed later than the default deployments
+    ClockUtil.offset(TimeUnit.MINUTES.toMillis(10));
+    Deployment tempDeploymentOne = repositoryService.createDeployment()
+        .addClasspathResource(getResourceOnePath()).addClasspathResource(getResourceOnePath()).deploy();
+    engineRule.manageDeployment(tempDeploymentOne);
+    
     // when
-    ProcessDefinitionQuery processDefinitionOrderByDeploymentTimeAscQuery = repositoryService.createProcessDefinitionQuery().orderByDeploymentTime().asc();
-    ProcessDefinitionQuery processDefinitionOrderByDeploymentTimeDescQuery = repositoryService.createProcessDefinitionQuery().orderByDeploymentTime().desc();
+    ProcessDefinitionQuery processDefinitionOrderByDeploymentTimeAscQuery = 
+        repositoryService.createProcessDefinitionQuery().orderByDeploymentTime().asc();
+    ProcessDefinitionQuery processDefinitionOrderByDeploymentTimeDescQuery = 
+        repositoryService.createProcessDefinitionQuery().orderByDeploymentTime().desc();
 
     // then
-    verifySortingAndCount(processDefinitionOrderByDeploymentTimeAscQuery, 4, processDefinitionByDeployTime(engineRule.getProcessEngine()));
-    verifySortingAndCount(processDefinitionOrderByDeploymentTimeDescQuery, 4, inverted(processDefinitionByDeployTime(engineRule.getProcessEngine())));
+    verifySortingAndCount(processDefinitionOrderByDeploymentTimeAscQuery, 5, 
+        processDefinitionByDeployTime(engineRule.getProcessEngine()));
+    verifySortingAndCount(processDefinitionOrderByDeploymentTimeDescQuery, 5, 
+        inverted(processDefinitionByDeployTime(engineRule.getProcessEngine())));
   }
 
   @Test
