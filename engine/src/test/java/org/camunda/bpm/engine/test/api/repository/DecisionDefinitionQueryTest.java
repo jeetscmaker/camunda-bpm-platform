@@ -17,17 +17,22 @@
 package org.camunda.bpm.engine.test.api.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.camunda.bpm.engine.test.api.runtime.TestOrderingUtil.decisionDefinitionByDeployTime;
+import static org.camunda.bpm.engine.test.api.runtime.TestOrderingUtil.inverted;
+import static org.camunda.bpm.engine.test.api.runtime.TestOrderingUtil.verifySortingAndCount;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import org.apache.commons.lang3.time.DateUtils;
+import org.assertj.core.util.DateUtil;
 import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.exception.NotValidException;
+import org.camunda.bpm.engine.impl.util.ClockUtil;
 import org.camunda.bpm.engine.repository.DecisionDefinition;
 import org.camunda.bpm.engine.repository.DecisionDefinitionQuery;
 import org.camunda.bpm.engine.repository.DecisionRequirementsDefinition;
-import org.camunda.bpm.engine.repository.Deployment;
 import org.camunda.bpm.engine.test.ProcessEngineRule;
 import org.camunda.bpm.engine.test.util.ProcessEngineTestRule;
 import org.camunda.bpm.engine.test.util.ProvidedProcessEngineRule;
@@ -153,32 +158,86 @@ public class DecisionDefinitionQueryTest {
 
   @Test
   public void queryByDeploymentTimeAfter() {
-    List<Deployment> deployments = repositoryService.createDeploymentQuery().list();
+    // given
+    Date startTest = ClockUtil.now();
 
-    for (Deployment deployment : deployments) {
-      List<DecisionDefinition> decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAfter(deployment.getDeploymentTime()).list();
-      for (DecisionDefinition decisionDefinition : decisionDefinitions) {
-        Deployment singleDeployment = repositoryService.createDeploymentQuery().deploymentId(decisionDefinition.getDeploymentId()).singleResult();
-        // all results should have a later deployment time than the one used in the query
-        assertThat(singleDeployment.getDeploymentTime()).isAfter(deployment.getDeploymentTime());
-      }
-    }
+    ClockUtil.setCurrentTime(DateUtils.addSeconds(startTest, 5));
+    String tempDeploymentOneId = repositoryService.createDeployment().addClasspathResource(DMN_ONE_RESOURCE).addClasspathResource(DMN_TWO_RESOURCE).deploy().getId();
+    Date timeAfterDeploymentOne = DateUtils.addSeconds(ClockUtil.getCurrentTime(), 1);
+
+    ClockUtil.setCurrentTime(DateUtils.addSeconds(timeAfterDeploymentOne, 5));
+    String tempDeploymentTwoId = repositoryService.createDeployment().addClasspathResource(DMN_ONE_RESOURCE).deploy().getId();
+    Date timeAfterDeploymentTwo = DateUtils.addSeconds(ClockUtil.getCurrentTime(), 1);
+
+    ClockUtil.setCurrentTime(DateUtils.addSeconds(timeAfterDeploymentTwo, 5));
+    String tempDeploymentThreeId = repositoryService.createDeployment().addClasspathResource(DMN_THREE_RESOURCE).deploy().getId();
+    Date timeAfterDeploymentThree = DateUtils.addSeconds(ClockUtil.getCurrentTime(), 1);
+
+    // when
+    List<DecisionDefinition> decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAfter(startTest).list();
+    // then
+    assertThat(decisionDefinitions).hasSize(4);
+
+    // when
+    decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAfter(timeAfterDeploymentOne).list();
+    // then
+    assertThat(decisionDefinitions).hasSize(2);
+    assertThatDecisionDefinitionsWereDeployedAfter(decisionDefinitions, timeAfterDeploymentOne);
+
+    // when
+    decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAfter(timeAfterDeploymentTwo).list();
+    // then
+    assertThat(decisionDefinitions).hasSize(1);
+    assertThatDecisionDefinitionsWereDeployedAfter(decisionDefinitions, timeAfterDeploymentTwo);
+
+    // when
+    decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAfter(timeAfterDeploymentThree).list();
+    // then
+    assertThat(decisionDefinitions).hasSize(0);
+
+    // cleanup
+    cleanupDeployments(tempDeploymentOneId, tempDeploymentTwoId, tempDeploymentThreeId);
+    ClockUtil.resetClock();
   }
 
   @Test
   public void queryByDeploymentTimeAt() {
-    Deployment firstDeployment = repositoryService.createDeploymentQuery().deploymentId(firstDeploymentId).singleResult();
-    Deployment secondDeployment = repositoryService.createDeploymentQuery().deploymentId(secondDeploymentId).singleResult();
-    Deployment thirdDeployment = repositoryService.createDeploymentQuery().deploymentId(thirdDeploymentId).singleResult();
+    // given
+    Date startTest = ClockUtil.now();
+    ClockUtil.setCurrentTime(startTest);
 
-    DecisionDefinitionQuery query = repositoryService.createDecisionDefinitionQuery().deployedAt(firstDeployment.getDeploymentTime());
-    verifyQueryResults(query, 2);
+    Date timeAtDeploymentOne = DateUtils.addSeconds(startTest, 5);
+    ClockUtil.setCurrentTime(timeAtDeploymentOne);
+    String tempDeploymentOneId = repositoryService.createDeployment().addClasspathResource(DMN_ONE_RESOURCE).addClasspathResource(DMN_TWO_RESOURCE).deploy()
+        .getId();
 
-    query = repositoryService.createDecisionDefinitionQuery().deployedAt(secondDeployment.getDeploymentTime());
-    verifyQueryResults(query, 1);
+    Date timeAtDeploymentTwo = DateUtils.addSeconds(timeAtDeploymentOne, 5);
+    ClockUtil.setCurrentTime(timeAtDeploymentTwo);
+    String tempDeploymentTwoId = repositoryService.createDeployment().addClasspathResource(DMN_ONE_RESOURCE).deploy().getId();
 
-    query = repositoryService.createDecisionDefinitionQuery().deployedAt(thirdDeployment.getDeploymentTime());
-    verifyQueryResults(query, 1);
+    Date timeAtDeploymentThree = DateUtils.addSeconds(timeAtDeploymentTwo, 5);
+    ClockUtil.setCurrentTime(timeAtDeploymentThree);
+    String tempDeploymentThreeId = repositoryService.createDeployment().addClasspathResource(DMN_THREE_RESOURCE).deploy().getId();
+
+    // then
+    List<DecisionDefinition> decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAt(timeAtDeploymentOne).list();
+    assertThat(decisionDefinitions).hasSize(2);
+    assertThatDecisionDefinitionsWereDeployedAt(decisionDefinitions, timeAtDeploymentOne);
+
+    decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAt(timeAtDeploymentTwo).list();
+    assertThat(decisionDefinitions).hasSize(1);
+    assertThatDecisionDefinitionsWereDeployedAt(decisionDefinitions, timeAtDeploymentTwo);
+
+    decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAt(timeAtDeploymentThree).list();
+    assertThat(decisionDefinitions).hasSize(1);
+    assertThatDecisionDefinitionsWereDeployedAt(decisionDefinitions, timeAtDeploymentThree);
+
+    decisionDefinitions = repositoryService.createDecisionDefinitionQuery().deployedAt(DateUtil.now()).list();
+    assertThat(decisionDefinitions).hasSize(0);
+
+    // cleanup
+    cleanupDeployments(tempDeploymentOneId, tempDeploymentTwoId, tempDeploymentThreeId);
+    ClockUtil.resetClock();
   }
 
   @Test
@@ -608,17 +667,13 @@ public class DecisionDefinitionQueryTest {
 
   @Test
   public void testQueryOrderByDeployTime() {
-    List<DecisionDefinition> decisionDefinitions = repositoryService.createDecisionDefinitionQuery().orderByDeploymentTime().asc().list();
-    Date lastDeployTime = null;
-    for (DecisionDefinition decisionDefinition : decisionDefinitions) {
-      Deployment deployment = repositoryService.createDeploymentQuery().deploymentId(decisionDefinition.getDeploymentId()).singleResult();
-      if (lastDeployTime == null) {
-        lastDeployTime = deployment.getDeploymentTime();
-      } else {
-        assertThat(lastDeployTime).isBeforeOrEqualsTo(deployment.getDeploymentTime());
-        lastDeployTime = deployment.getDeploymentTime();
-      }
-    }
+    // when
+    DecisionDefinitionQuery decisionDefinitionOrderByDeploymentTimeAscQuery = repositoryService.createDecisionDefinitionQuery().orderByDeploymentTime().asc();
+    DecisionDefinitionQuery decisionDefinitionOrderByDeploymentTimeDescQuery = repositoryService.createDecisionDefinitionQuery().orderByDeploymentTime().desc();
+
+    // then
+    verifySortingAndCount(decisionDefinitionOrderByDeploymentTimeAscQuery, 4, decisionDefinitionByDeployTime(engineRule.getProcessEngine()));
+    verifySortingAndCount(decisionDefinitionOrderByDeploymentTimeDescQuery, 4, inverted(decisionDefinitionByDeployTime(engineRule.getProcessEngine())));
   }
 
   protected String[] merge(List<String> list1, List<String> list2) {
@@ -664,5 +719,23 @@ public class DecisionDefinitionQueryTest {
     .list();
 
     assertThat(decisionDefinitionList).hasSize(2);
+  }
+
+  protected void assertThatDecisionDefinitionsWereDeployedAfter(List<DecisionDefinition> decisionDefinitions, Date deployedAfter) {
+    for (DecisionDefinition decisionDefinition : decisionDefinitions) {
+      assertThat(repositoryService.createDeploymentQuery().deploymentId(decisionDefinition.getDeploymentId()).singleResult().getDeploymentTime()).isAfter(deployedAfter);
+    }
+  }
+
+  protected void assertThatDecisionDefinitionsWereDeployedAt(List<DecisionDefinition> decisionDefinitions, Date deployedAt) {
+    for (DecisionDefinition decisionDefinition : decisionDefinitions) {
+      assertThat(repositoryService.createDeploymentQuery().deploymentId(decisionDefinition.getDeploymentId()).singleResult().getDeploymentTime()).isEqualTo(deployedAt);
+    }
+  }
+
+  protected void cleanupDeployments(String... deploymentId) {
+    for (String id : deploymentId) {
+      repositoryService.deleteDeployment(id, true);
+    }
   }
 }

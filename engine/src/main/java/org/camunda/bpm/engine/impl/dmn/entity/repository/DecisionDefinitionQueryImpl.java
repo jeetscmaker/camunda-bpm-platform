@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.camunda.bpm.engine.exception.NotValidException;
 import org.camunda.bpm.engine.impl.AbstractQuery;
-import org.camunda.bpm.engine.impl.JoinedQueryOrderingProperty;
 import org.camunda.bpm.engine.impl.Page;
 import org.camunda.bpm.engine.impl.QueryOrderingProperty;
 import org.camunda.bpm.engine.impl.interceptor.CommandContext;
@@ -247,7 +246,7 @@ public class DecisionDefinitionQueryImpl extends AbstractQuery<DecisionDefinitio
 
   public DecisionDefinitionQuery orderByDeploymentTime() {
     shouldJoinDeploymentTable = true;
-    orderBy(new JoinedQueryOrderingProperty(QueryOrderingProperty.RELATION_DEPLOYMENT, DecisionDefinitionQueryProperty.DEPLOY_TIME));
+    orderBy(new QueryOrderingProperty(QueryOrderingProperty.RELATION_DEPLOYMENT, DecisionDefinitionQueryProperty.DEPLOY_TIME));
     return this;
   }
 

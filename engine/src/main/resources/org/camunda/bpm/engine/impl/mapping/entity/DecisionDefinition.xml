@@ -208,10 +208,8 @@
     <include refid="org.camunda.bpm.engine.impl.persistence.entity.Commons.bindOrderBy"/>
     ${limitBefore}
     select ${distinct} RES.*
-    <if test="shouldJoinDeploymentTable">
-      , DEP.DEPLOY_TIME_
-    </if>
     ${limitBetween}
+    <include refid="org.camunda.bpm.engine.impl.persistence.entity.Commons.orderBySelection"/>
     <include refid="selectDecisionDefinitionsByQueryCriteriaSql"/>
     ${orderBy}
     ${limitAfter}
