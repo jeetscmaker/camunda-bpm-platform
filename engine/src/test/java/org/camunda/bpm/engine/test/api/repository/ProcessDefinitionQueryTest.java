@@ -170,7 +170,7 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
   @Test
   public void testQueryByDeploymentTimeAt() {
     // given
-    Date startTest = ClockUtil.now();
+    Date startTest = DateUtils.addSeconds(ClockUtil.now(), 5);
     ClockUtil.setCurrentTime(startTest);
 
     Date timeAtDeploymentOne = ClockUtil.getCurrentTime();
