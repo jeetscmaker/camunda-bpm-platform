@@ -21,6 +21,8 @@ import static org.camunda.bpm.engine.test.api.runtime.TestOrderingUtil.inverted;
 import static org.camunda.bpm.engine.test.api.runtime.TestOrderingUtil.processDefinitionByDeployTime;
 import static org.camunda.bpm.engine.test.api.runtime.TestOrderingUtil.verifySortingAndCount;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -168,9 +170,12 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
   }
 
   @Test
-  public void testQueryByDeploymentTimeAt() {
+  public void testQueryByDeploymentTimeAt() throws ParseException {
     // given
-    Date startTest = DateUtils.addSeconds(ClockUtil.now(), 5);
+    //get rid of the milliseconds because of MySQL datetime precision
+    SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy - HH:mm:ss");
+      
+    Date startTest = formatter.parse(formatter.format(ClockUtil.now()));
     ClockUtil.setCurrentTime(startTest);
 
     Date timeAtDeploymentOne = ClockUtil.getCurrentTime();
