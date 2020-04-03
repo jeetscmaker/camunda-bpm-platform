@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.time.DateUtils;
-import org.assertj.core.util.DateUtil;
 import org.camunda.bpm.engine.ProcessEngineException;
 import org.camunda.bpm.engine.impl.util.ClockUtil;
 import org.camunda.bpm.engine.repository.Deployment;
@@ -175,7 +174,7 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
     //get rid of the milliseconds because of MySQL datetime precision
     SimpleDateFormat formatter = new SimpleDateFormat("dd.MM.yyyy - HH:mm:ss");
       
-    Date startTest = formatter.parse(formatter.format(ClockUtil.now()));
+    Date startTest = formatter.parse(formatter.format(DateUtils.addSeconds(ClockUtil.now(), 5)));
     ClockUtil.setCurrentTime(startTest);
 
     Date timeAtDeploymentOne = ClockUtil.getCurrentTime();
@@ -208,7 +207,7 @@ public class ProcessDefinitionQueryTest extends AbstractDefinitionQueryTest {
     assertThat(processDefinitions).hasSize(1);
     assertThatProcessDefinitionsWereDeployedAt(processDefinitions, timeAtDeploymentThree);
 
-    processDefinitions = repositoryService.createProcessDefinitionQuery().deployedAt(DateUtil.now()).list();
+    processDefinitions = repositoryService.createProcessDefinitionQuery().deployedAt(DateUtils.addSeconds(ClockUtil.getCurrentTime(), 5)).list();
     assertThat(processDefinitions).hasSize(0);
   }
 
